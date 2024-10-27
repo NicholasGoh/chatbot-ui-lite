@@ -1,4 +1,5 @@
 import { Chat } from "@/components/Chat/Chat";
+import { useQueryClient } from "@tanstack/react-query";
 import { Footer } from "@/components/Layout/Footer";
 import { Navbar } from "@/components/Layout/Navbar";
 import { Message } from "@/types";
@@ -6,6 +7,7 @@ import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
+  // NOTE will not implement fetching of persisted messages from api
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -14,6 +16,13 @@ export default function Home() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const queryClient = useQueryClient()
+  const addItemToCache = (newItem: Message) => {
+    queryClient.setQueryData(["history"], (oldData: Message[] | undefined) => {
+      return [...(oldData || []), newItem];
+    });
+  }
 
   const handleSend = async (message: Message) => {
     const updatedMessages = [...messages, message];
@@ -48,6 +57,8 @@ export default function Home() {
     });
 
     eventSource.addEventListener("on_chat_model_end", function (event) {
+      // TODO add non user messages to history
+      addItemToCache(message)
       eventSource.close();
       setLoading(false);
     });
@@ -56,7 +67,7 @@ export default function Home() {
   const handleReset = () => {
     setMessages([
       {
-        role: "assistant",
+        role: "assistant", // TODO, should be system
         content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
       },
     ]);
@@ -69,7 +80,7 @@ export default function Home() {
   useEffect(() => {
     setMessages([
       {
-        role: "assistant",
+        role: "assistant", // TODO, should be system
         content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
       },
     ]);
