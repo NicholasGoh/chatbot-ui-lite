@@ -17,12 +17,12 @@ export default function Home() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   const addItemToCache = (newItem: Message) => {
     queryClient.setQueryData(["history"], (oldData: Message[] | undefined) => {
       return [...(oldData || []), newItem];
     });
-  }
+  };
 
   const handleSend = async (message: Message) => {
     const updatedMessages = [...messages, message];
@@ -58,7 +58,7 @@ export default function Home() {
 
     eventSource.addEventListener("on_chat_model_end", function (event) {
       // TODO add non user messages to history
-      addItemToCache(message)
+      addItemToCache(message);
       eventSource.close();
       setLoading(false);
     });
