@@ -17,64 +17,40 @@ export default function Home() {
 
   const handleSend = async (message: Message) => {
     const updatedMessages = [...messages, message];
-
     setMessages(updatedMessages);
     setLoading(true);
 
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        messages: updatedMessages
-      })
-    });
+    const eventSource = new EventSource(`http://${window.location.host}/api/v1/streaming?query=${message.content}`);
 
-    if (!response.ok) {
-      setLoading(false);
-      throw new Error(response.statusText);
-    }
-
-    const data = response.body;
-
-    if (!data) {
-      return;
-    }
-
-    setLoading(false);
-
-    const reader = data.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-    let isFirst = true;
-
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunkValue = decoder.decode(value);
-
-      if (isFirst) {
-        isFirst = false;
-        setMessages((messages) => [
-          ...messages,
-          {
-            role: "assistant",
-            content: chunkValue
-          }
-        ]);
-      } else {
-        setMessages((messages) => {
-          const lastMessage = messages[messages.length - 1];
+    eventSource.addEventListener("on_chat_model_stream", function (event) {
+      // TODO add history
+      const chunkValue = event.data
+      setMessages((messages) => {
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.role === "assistant") {
           const updatedMessage = {
             ...lastMessage,
             content: lastMessage.content + chunkValue
           };
           return [...messages.slice(0, -1), updatedMessage];
-        });
-      }
-    }
+        } else {
+          return [
+            ...messages,
+            {
+              role: "assistant",
+              content: chunkValue
+            }
+          ];
+        }
+      });
+    });
+
+    eventSource.addEventListener("on_chat_model_end", function (event) {
+      eventSource.close();
+      setLoading(false);
+    });
   };
+
 
   const handleReset = () => {
     setMessages([
