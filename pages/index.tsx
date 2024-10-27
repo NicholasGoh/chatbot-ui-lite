@@ -20,17 +20,19 @@ export default function Home() {
     setMessages(updatedMessages);
     setLoading(true);
 
-    const eventSource = new EventSource(`http://${window.location.host}/api/v1/streaming?query=${message.content}`);
+    const eventSource = new EventSource(
+      `http://${window.location.host}/api/v1/streaming?query=${message.content}`,
+    );
 
     eventSource.addEventListener("on_chat_model_stream", function (event) {
       // TODO add history
-      const chunkValue = event.data
+      const chunkValue = event.data;
       setMessages((messages) => {
         const lastMessage = messages[messages.length - 1];
         if (lastMessage.role === "assistant") {
           const updatedMessage = {
             ...lastMessage,
-            content: lastMessage.content + chunkValue
+            content: lastMessage.content + chunkValue,
           };
           return [...messages.slice(0, -1), updatedMessage];
         } else {
@@ -38,8 +40,8 @@ export default function Home() {
             ...messages,
             {
               role: "assistant",
-              content: chunkValue
-            }
+              content: chunkValue,
+            },
           ];
         }
       });
@@ -51,13 +53,12 @@ export default function Home() {
     });
   };
 
-
   const handleReset = () => {
     setMessages([
       {
         role: "assistant",
-        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`
-      }
+        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
+      },
     ]);
   };
 
@@ -69,8 +70,8 @@ export default function Home() {
     setMessages([
       {
         role: "assistant",
-        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`
-      }
+        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
+      },
     ]);
   }, []);
 
@@ -82,14 +83,8 @@ export default function Home() {
           name="description"
           content="A simple chatbot starter kit for OpenAI's chat model using Next.js, TypeScript, and Tailwind CSS."
         />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1"
-        />
-        <link
-          rel="icon"
-          href="/favicon.ico"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <div className="flex flex-col h-screen">
