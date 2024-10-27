@@ -58,7 +58,7 @@ export default function Home() {
     eventSource.addEventListener("on_chat_model_end", function (event) {
       addItemToCache(message);
       // NOTE history is store on client side, but api not yet implemented history
-      addItemToCache({ role: 'assistant', content: event.data } as Message)
+      addItemToCache({ role: "assistant", content: event.data } as Message);
       eventSource.close();
       setLoading(false);
     });
