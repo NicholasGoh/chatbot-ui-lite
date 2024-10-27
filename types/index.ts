@@ -8,3 +8,14 @@ export interface Message {
 }
 
 export type Role = "system" | "assistant" | "user";
+
+export interface InsertPayload {
+  user_id: string;
+  user_query: string;
+  completion: string;
+}
+
+export interface ReactQueryMessage {
+  user_query: string;
+  completion: string;
+}

@@ -2,7 +2,7 @@ import { Chat } from "@/components/Chat/Chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { Footer } from "@/components/Layout/Footer";
 import { Navbar } from "@/components/Layout/Navbar";
-import { Message } from "@/types";
+import { Message, InsertPayload, ReactQueryMessage, Role } from "@/types";
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -12,12 +12,27 @@ import {
   UserButton,
 } from "@clerk/clerk-react";
 import { useUser } from "@clerk/clerk-react";
+import axios from "axios";
 
 export default function Home() {
   // TODO implement fetching of persisted messages from api per uid
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const userId = useUser()?.user?.id;
+  const { user, isLoaded } = useUser();
+  const [userId, setUserId] = useState("unknown_user");
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      setUserId(user.id);
+      // TODO make this configurable; ${window} cannot be evaluated here
+      axios
+        .get(`http://localhost/api/v1/database/chat-history?user_id=${user.id}`)
+        .then((response) => {
+          replaceCache(response.data);
+        })
+        .catch((error) => console.log(error));
+    }
+  }, [isLoaded, user]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -31,14 +46,18 @@ export default function Home() {
       return [...(oldData || []), newItem];
     });
   };
+  const replaceCache = (cache: Message[]) => {
+    queryClient.setQueryData(["history"], (oldData: Message[] | undefined) => {
+      return oldData ? oldData : cache;
+    });
+  };
 
   const handleSend = async (message: Message) => {
-    const updatedMessages = [...messages, message];
-    setMessages(updatedMessages);
+    setMessages([...messages, message]);
     setLoading(true);
 
     const eventSource = new EventSource(
-      `http://${window.location.host}/api/v1/streaming?query=${message.content}`,
+      `${window.location.protocol}//${window.location.host}/api/v1/completions?query=${message.content}`,
     );
 
     eventSource.addEventListener("on_chat_model_stream", function (event) {
@@ -65,19 +84,44 @@ export default function Home() {
 
     eventSource.addEventListener("on_chat_model_end", function (event) {
       addItemToCache(message);
-      // NOTE history is store on client side, but api not yet implemented history
       addItemToCache({ role: "assistant", content: event.data } as Message);
+      const payload: InsertPayload = {
+        user_id: userId,
+        user_query: message.content,
+        completion: event.data,
+      };
+      axios
+        .post(
+          `${window.location.protocol}//${window.location.host}/api/v1/database/chat-history`,
+          payload,
+          {
+            headers: {
+              accept: "application/json",
+              "Content-Type": "application/json",
+            },
+          },
+        )
+        .then((response) => console.log(response.data))
+        .catch((error) => console.log(error));
       eventSource.close();
       setLoading(false);
     });
   };
 
   const handleReset = () => {
+    const history =
+      (queryClient.getQueryData(["history"]) as ReactQueryMessage[]) || [];
     setMessages([
       {
         role: "assistant", // TODO, should be system
         content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
       },
+      ...history
+        .map((item) => [
+          { role: "user" as Role, content: item.user_query },
+          { role: "assistant" as Role, content: item.completion },
+        ])
+        .flat(),
     ]);
   };
 
@@ -86,48 +130,62 @@ export default function Home() {
   }, [messages]);
 
   useEffect(() => {
+    // TODO render value from react query "history" key on refresh
+    const history =
+      (queryClient.getQueryData(["history"]) as ReactQueryMessage[]) || [];
     setMessages([
       {
         role: "assistant", // TODO, should be system
         content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
       },
+      ...history
+        .map((item) => [
+          { role: "user" as Role, content: item.user_query },
+          { role: "assistant" as Role, content: item.completion },
+        ])
+        .flat(),
     ]);
   }, []);
 
-  return (
-    <>
-      <SignedOut>
-        <SignInButton />
-      </SignedOut>
-      <SignedIn>
-        <UserButton />
-        <Head>
-          <title>Chatbot UI</title>
-          <meta
-            name="description"
-            content="A simple chatbot starter kit for OpenAI's chat model using Next.js, TypeScript, and Tailwind CSS."
-          />
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/favicon.ico" />
-        </Head>
+  if (isLoaded) {
+    return (
+      <>
+        <SignedOut>
+          <SignInButton />
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+          <Head>
+            <title>Chatbot UI</title>
+            <meta
+              name="description"
+              content="A simple chatbot starter kit for OpenAI's chat model using Next.js, TypeScript, and Tailwind CSS."
+            />
+            <meta
+              name="viewport"
+              content="width=device-width, initial-scale=1"
+            />
+            <link rel="icon" href="/favicon.ico" />
+          </Head>
 
-        <div className="flex flex-col h-screen">
-          <Navbar />
+          <div className="flex flex-col h-screen">
+            <Navbar />
 
-          <div className="flex-1 overflow-auto sm:px-10 pb-4 sm:pb-10">
-            <div className="max-w-[800px] mx-auto mt-4 sm:mt-12">
-              <Chat
-                messages={messages}
-                loading={loading}
-                onSend={handleSend}
-                onReset={handleReset}
-              />
-              <div ref={messagesEndRef} />
+            <div className="flex-1 overflow-auto sm:px-10 pb-4 sm:pb-10">
+              <div className="max-w-[800px] mx-auto mt-4 sm:mt-12">
+                <Chat
+                  messages={messages}
+                  loading={loading}
+                  onSend={handleSend}
+                  onReset={handleReset}
+                />
+                <div ref={messagesEndRef} />
+              </div>
             </div>
+            <Footer />
           </div>
-          <Footer />
-        </div>
-      </SignedIn>
-    </>
-  );
+        </SignedIn>
+      </>
+    );
+  }
 }
