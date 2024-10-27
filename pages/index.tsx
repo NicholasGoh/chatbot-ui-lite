@@ -7,7 +7,7 @@ import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 
 export default function Home() {
-  // NOTE will not implement fetching of persisted messages from api
+  // TODO implement fetching of persisted messages from api per uid
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -34,7 +34,6 @@ export default function Home() {
     );
 
     eventSource.addEventListener("on_chat_model_stream", function (event) {
-      // TODO add history
       const chunkValue = event.data;
       setMessages((messages) => {
         const lastMessage = messages[messages.length - 1];
@@ -57,8 +56,9 @@ export default function Home() {
     });
 
     eventSource.addEventListener("on_chat_model_end", function (event) {
-      // TODO add non user messages to history
       addItemToCache(message);
+      // NOTE history is store on client side, but api not yet implemented history
+      addItemToCache({ role: 'assistant', content: event.data } as Message)
       eventSource.close();
       setLoading(false);
     });
