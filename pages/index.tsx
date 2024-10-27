@@ -11,7 +11,7 @@ import {
   SignInButton,
   UserButton,
 } from "@clerk/clerk-react";
-import { useUser } from '@clerk/clerk-react'
+import { useUser } from "@clerk/clerk-react";
 
 export default function Home() {
   // TODO implement fetching of persisted messages from api per uid
