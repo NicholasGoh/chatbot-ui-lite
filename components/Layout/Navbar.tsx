@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { UserButton } from "@clerk/clerk-react";
 
 export const Navbar: FC = () => {
   return (
@@ -11,6 +12,7 @@ export const Navbar: FC = () => {
           Chatbot UI
         </a>
       </div>
+      <UserButton />
     </div>
   );
 };

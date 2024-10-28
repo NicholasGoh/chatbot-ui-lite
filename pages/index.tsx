@@ -5,12 +5,7 @@ import { Navbar } from "@/components/Layout/Navbar";
 import { Message, InsertPayload, APIMessage, Role } from "@/types";
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
-import {
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-} from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 
@@ -151,13 +146,13 @@ export default function Home() {
           <SignInButton />
         </SignedOut>
         <SignedIn>
-          <UserButton />
           <Head>
             <title>Chatbot UI</title>
             <meta
               name="description"
               content="A simple chatbot starter kit for OpenAI's chat model using Next.js, TypeScript, and Tailwind CSS."
             />
+
             <meta
               name="viewport"
               content="width=device-width, initial-scale=1"
