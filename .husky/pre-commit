@@ -1,1 +1,1 @@
-npm run prettier && npm run eslint
+npm run prettier && npm run eslint && git add .

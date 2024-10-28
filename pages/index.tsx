@@ -2,7 +2,7 @@ import { Chat } from "@/components/Chat/Chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { Footer } from "@/components/Layout/Footer";
 import { Navbar } from "@/components/Layout/Navbar";
-import { Message, InsertPayload, ReactQueryMessage, Role } from "@/types";
+import { Message, InsertPayload, APIMessage, Role } from "@/types";
 import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -15,24 +15,10 @@ import { useUser } from "@clerk/clerk-react";
 import axios from "axios";
 
 export default function Home() {
-  // TODO implement fetching of persisted messages from api per uid
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { user, isLoaded } = useUser();
   const [userId, setUserId] = useState("unknown_user");
-
-  useEffect(() => {
-    if (isLoaded && user) {
-      setUserId(user.id);
-      // TODO make this configurable; ${window} cannot be evaluated here
-      axios
-        .get(`http://localhost/api/v1/database/chat-history?user_id=${user.id}`)
-        .then((response) => {
-          replaceCache(response.data);
-        })
-        .catch((error) => console.log(error));
-    }
-  }, [isLoaded, user]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +37,46 @@ export default function Home() {
       return oldData ? oldData : cache;
     });
   };
+
+  const setMessagesFromReactQuery = (history: APIMessage[]) => {
+    console.log(history);
+    (queryClient.getQueryData(["history"]) as APIMessage[]) || [];
+    setMessages([
+      {
+        role: "assistant", // TODO, should be system
+        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
+      },
+      ...history
+        .map((item) => [
+          { role: "user" as Role, content: item.user_query },
+          { role: "assistant" as Role, content: item.completion },
+        ])
+        .flat(),
+    ]);
+  };
+
+  useEffect(() => {
+    if (isLoaded && user) {
+      setUserId(user.id);
+      // TODO make this configurable; ${window} cannot be evaluated here
+      axios
+        .get(`http://localhost/api/v1/database/chat-history?user_id=${user.id}`)
+        .then((response) => {
+          replaceCache(response.data);
+          setMessagesFromReactQuery(response.data);
+        })
+        .catch((error) => console.log(error));
+      setMessagesFromReactQuery([]);
+    }
+  }, [isLoaded, user]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    setMessagesFromReactQuery([]);
+  }, []);
 
   const handleSend = async (message: Message) => {
     setMessages([...messages, message]);
@@ -109,43 +135,14 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    const history =
-      (queryClient.getQueryData(["history"]) as ReactQueryMessage[]) || [];
-    setMessages([
-      {
-        role: "assistant", // TODO, should be system
-        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
-      },
-      ...history
-        .map((item) => [
-          { role: "user" as Role, content: item.user_query },
-          { role: "assistant" as Role, content: item.completion },
-        ])
-        .flat(),
-    ]);
+    axios
+      .delete(
+        `${window.location.protocol}//${window.location.host}/api/v1/database/chat-history/${userId}`,
+      )
+      .then((response) => console.log(response.data))
+      .catch((error) => console.log(error));
+    setMessagesFromReactQuery([]);
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  useEffect(() => {
-    // TODO render value from react query "history" key on refresh
-    const history =
-      (queryClient.getQueryData(["history"]) as ReactQueryMessage[]) || [];
-    setMessages([
-      {
-        role: "assistant", // TODO, should be system
-        content: `Hi there! I'm Chatbot UI, an AI assistant. I can help you with things like answering questions, providing information, and helping with tasks. How can I help you?`,
-      },
-      ...history
-        .map((item) => [
-          { role: "user" as Role, content: item.user_query },
-          { role: "assistant" as Role, content: item.completion },
-        ])
-        .flat(),
-    ]);
-  }, []);
 
   if (isLoaded) {
     return (

@@ -15,7 +15,7 @@ export interface InsertPayload {
   completion: string;
 }
 
-export interface ReactQueryMessage {
+export interface APIMessage {
   user_query: string;
   completion: string;
 }
